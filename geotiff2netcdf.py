@@ -1,14 +1,14 @@
-from osgeo import gdal
+from osgeo import gdal, osr
 import numpy as np
 import netCDF4
 from datetime import datetime
 from netCDF4 import date2num
 import pyproj
-import os
+
 
 source_path = 'UW_NA_LST_7.1.1_001_2008.10.1_0.0.0_2008.10.31_23.59.59_NA_001.tif'
 output_path = '2008.10.1_0.0.0_2008.10.31_23.59.59_NA_001.nc'
-tmp_nc_path = 'tmp.nc'
+date = datetime(2008, 10, 1)
 
 # open source Geotiff file
 source_dataset = gdal.Open(source_path)
@@ -17,78 +17,73 @@ source_dataset = gdal.Open(source_path)
 meta = source_dataset.GetMetadata()
 x0, xinc, _, y0, _, yinc = source_dataset.GetGeoTransform()
 nx, ny = (source_dataset.RasterXSize, source_dataset.RasterYSize)
-x = np.linspace(x0, x0 + xinc*nx, nx)
-y = np.linspace(y0, y0 + yinc*ny, ny)
+x = np.linspace(x0, x0 + xinc * nx, nx)
+y = np.linspace(y0, y0 + yinc * ny, ny)
 xv, yv = np.meshgrid(x, y)
 
-# Reproject the coordinates out of lamaz into lat/lon.
-lamaz = pyproj.Proj("+proj=laea +lat_0=90 +lon_0=0 k=1 +x_0=0 +y_0= 0 +units=m +a=6371228.0 +b=6371228.0")
-wgs84 = pyproj.Proj("+init=EPSG:4326")
-lon, lat = pyproj.transform(lamaz, wgs84, xv, yv)
+data = source_dataset.ReadAsArray()
 
-# convert to a temp NetCDf file
-gdal.Translate(tmp_nc_path, source_dataset, format='NetCDF')
+# get projection wkt
+prj = source_dataset.GetProjection()
+# get proj4 of the projected system
+sr = osr.SpatialReference(wkt=prj)
+#sr.ImportFromWkt(prj)
+proj4 = sr.ExportToProj4()
 
-# Modify converted temp NetCDF
-converted_dataset = netCDF4.Dataset(tmp_nc_path, 'r+')
+# Convert to lat/lon
+inproj = pyproj.Proj(proj4)
+lons, lats = inproj(xv, yv, inverse=True)
 
-# Add time dimension and time variable
-converted_dataset.createDimension('time', None)
-times = converted_dataset.createVariable('time', 'i4', ('time', ))
-times.units = 'hours since 1990-01-01 00:00:00'
-times.calendar = 'gregorian'
-times.long_name = 'time'
-times.axis = 'T'
+with netCDF4.Dataset(output_path, 'w') as outnc:
+    # create dimensions
+    outnc.createDimension('nlon', nx)
+    outnc.createDimension('nlat', ny)
+    outnc.createDimension('time', None)
 
-# Add value to time variable
-times[:] = date2num([datetime(2008, 10, 1)], units=times.units, calendar=times.calendar)
+    var_x = outnc.createVariable('nlon', 'f4', ('nlon',))
+    var_x.long_name = 'longitude in laea'
+    var_x.units = 'm'
+    var_x.standard_name = 'grid_longitude'
+    var_x.axis = 'X'
+    var_x[:] = x[:]
 
-# Add lat/lon variables
-var_lat = converted_dataset.createVariable('lat', 'f4', ('y', 'x'))
-var_lat.units = 'degree'
-var_lat.long_name = 'Latitude. -90 to 90 degree'
-var_lat[:] = lat[:]
+    var_y = outnc.createVariable('nlat', 'f4', ('nlat',))
+    var_y.long_name = 'latitude in laea'
+    var_y.units = 'm'
+    var_y.standard_name = 'grid_latitude'
+    var_y.axis = 'Y'
+    var_y[:] = y[:]
 
-var_lon = converted_dataset.createVariable('lon', 'f4', ('y', 'x'))
-var_lon.units = 'degree'
-var_lon.long_name = 'Longitude. -180 to 180 degree'
-var_lon[:] = lon[:]
+    # create variables
+    var_time = outnc.createVariable('time', 'i4', ('time',))
+    var_time.long_name = 'time'
+    var_time.units = 'hours since 1990-01-01 00:00:00'
+    var_time.calendar = 'gregorian'
+    var_time.standard_name = 'time'
+    var_time.axis = 'T'
 
-# Get Band1 variable
-band1 = converted_dataset.variables['Band1']
-#
-#  Create new variable with time dimension
-lst = converted_dataset.createVariable('LST_LWST_avg_daily', band1.datatype, ('time', 'y', 'x'))
-# Copy attributes from Band1
-lst.setncatts({k: band1.getncattr(k) for k in band1.ncattrs()})
-lst.units = 'degree Kelvin'
-lst.long_name = 'average daily temperature'
-np.warnings.filterwarnings('ignore')
-lst[:] = [band1[:]]
+    # Add value to time variable
+    var_time[:] = date2num([date],
+                           units=var_time.units,
+                           calendar=var_time.calendar)
 
-# # Check the grid mapping variable
-# grid_mapping = converted_dataset.variables['lambert_azimuthal_equal_area']
-# print(grid_mapping)
+    var_lat = outnc.createVariable('lat', 'f4', ('nlat', 'nlon'))
+    var_lat.long_name = 'latitude'
+    var_lat.units = 'degrees_north'
+    var_lat.standard_name = 'latitude'
+    var_lat[:] = lats[:]
 
-converted_dataset.close()
+    var_lon = outnc.createVariable('lon', 'f4', ('nlat', 'nlon'))
+    var_lon.long_name = 'longitude'
+    var_lon.units = 'degrees_east'
+    var_lon.standard_name = 'longitude'
+    var_lon[:] = lons[:]
+
+    var_lst = outnc.createVariable('LST_LWST_avg_daily', 'f4', ('time', 'nlat', 'nlon'))
+    var_lst.units = 'degree_kelvin'
+    var_lst.long_name = 'average daily temperature'
+    var_lst.coordinates = "lon lat"
+    var_lst[:] = [data[:]]
 
 
-# To delete Band1, copy everything from the the temp NetCDF file to the final NetCDF file
-with netCDF4.Dataset(tmp_nc_path) as src, netCDF4.Dataset(output_path, "w") as dst:
-    # copy attributes
-    for name in src.ncattrs():
-        dst.setncattr(name, src.getncattr(name))
 
-    # copy dimensions
-    for name, dimension in src.dimensions.items():
-        dst.createDimension(name, (len(dimension) if not dimension.isunlimited() else None))
-
-    # copy all file data except for Band1
-    for name, variable in src.variables.items():
-        if name != 'Band1':
-            x = dst.createVariable(name, variable.datatype, variable.dimensions)
-            x.setncatts({k: variable.getncattr(k) for k in variable.ncattrs()})
-            dst.variables[name][:] = src.variables[name][:]
-
-# delete temp NetCDF file
-os.remove(tmp_nc_path)
