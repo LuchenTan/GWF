@@ -137,7 +137,7 @@ def dataVariable(tail, nc_handle, data, dim_y_name, dim_x_name, lat_name, lon_na
     var_name_pre_avg = 'LST_LWST_avg_'
     long_name_pre_avg = ' average temperature'
     var_name_pre_num = 'N_obs_avg_'
-    long_name_pre_num = 'number of observations used to '
+    long_name_pre_num = 'number of observations used to calculate '
     var_name, units, long_name = '', '', ''
     missing_value_num = 0
     if tail == '001':
@@ -165,15 +165,10 @@ def dataVariable(tail, nc_handle, data, dim_y_name, dim_x_name, lat_name, lon_na
         units = unit_1
         long_name = long_name_pre_num + 'night' + long_name_pre_avg
 
-    if tail in ['001', '003', '005']:
-        var = nc_handle.createVariable(var_name, 'f4', ('time', dim_y_name, dim_x_name, ))
-        var[:] = [data]
-    elif tail in ['002', '004', '006']:
-        var = nc_handle.createVariable(var_name, 'i4', ('time', dim_y_name, dim_x_name), fill_value=missing_value_num)
-        var[:] = [np.nan_to_num(data, copy=False)]  # replace nan with zero
-    else:
-        var = nc_handle.createVariable(var_name, 'f4', ('time', dim_y_name, dim_x_name,))
-        var[:] = [data]
+    var = nc_handle.createVariable(var_name, 'f4', ('time', dim_y_name, dim_x_name,))
+    # assign the masked array to data variable
+    var[:] = [np.ma.masked_invalid(data)]
+
     setattr(var, 'units', units)
     setattr(var, 'long_name', long_name)
     setattr(var, 'coordinates', lat_name + ' ' + lon_name)
