@@ -250,6 +250,17 @@ def convert(in_source, out_dir, out_source_name=None, dim_x_name='x', dim_y_name
     # create data variable
     var_data = dataVariable(tail, out_nc, band1data, dim_y_name, dim_x_name, lat_name, lon_name)
     var_data.grid_mapping = grid_map_name
+    # temporal resolution attribute for the data variable
+    file_end_datetime = datetime.strptime(' '.join([end_date, end_time]), '%Y.%m.%d %H.%M.%S')
+    temp_res = ''
+    delta = (file_end_datetime - file_date).days
+    if delta == 1:
+        temp_res = 'daily'
+    elif delta == 7:
+        temp_res = 'weekly'
+    else:
+        temp_res = 'monthly'
+    setattr(var_data, 'temporal_resolution', temp_res)
 
 
     out_nc.Conventions = 'CF-1.6'
