@@ -181,7 +181,7 @@ def convert(in_source, out_dir, out_source_name=None, dim_x_name='x', dim_y_name
         return
 
     # parse the in source file name
-    start_date, start_time, fname, tail = parseFilename(in_source)
+    start_date, start_time, end_date, end_time, fname, tail = parseFilename(in_source)
     if not out_source_name:
         out_source = os.path.join(out_dir, fname + '.nc')
     else:
