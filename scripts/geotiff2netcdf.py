@@ -128,7 +128,7 @@ def parseFilename(filename):
     if tail not in ['001', '002', '003', '004', '005', '006']:
         print(fname + ' is not valid!', 'Please select a GeoTIFF file named of 001 to 006')
         return False
-    return start_date, start_time, fname, tail
+    return start_date, start_time, end_date, end_time, fname, tail
 
 
 # set up data variable based on file name tail
