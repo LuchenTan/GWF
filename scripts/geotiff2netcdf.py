@@ -65,8 +65,10 @@ def readFile(filename):
 # get coordinate values
 def getCoordinates(xsize, ysize, geotransform):
     x_topleft, x_res, dx_rotation, y_topleft, dy_rotation, y_res = geotransform
-    xcoordinates = np.arange(start=x_topleft, stop=x_topleft + x_res * xsize, step=x_res)
-    ycoordinates = np.arange(start=y_topleft, stop=y_topleft + y_res * ysize, step=y_res)
+    xcoordinates = np.arange(start=x_topleft, stop=x_topleft + x_res * xsize, step=x_res,
+                             dtype=np.float32)
+    ycoordinates = np.arange(start=y_topleft, stop=y_topleft + y_res * ysize, step=y_res,
+                             dtype=np.float32)
     return xcoordinates, ycoordinates
 
 
@@ -210,13 +212,13 @@ def convert(in_source, out_dir, out_source_name=None, dim_x_name='x', dim_y_name
     proj_y[:] = ycoordinates
 
     # auxiliary coordinate variables lat and lon
-    lat = out_nc.createVariable(lat_name, lats.dtype, (dim_y_name, dim_x_name, ))
+    lat = out_nc.createVariable(lat_name, 'f4', (dim_y_name, dim_x_name, ))
     lat.units = 'degrees_north'
     lat.standard_name = 'latitude'
     lat.long_name = 'latitude coordinate'
     lat[:] = lats[:]
 
-    lon = out_nc.createVariable(lon_name, lons.dtype, (dim_y_name, dim_x_name, ))
+    lon = out_nc.createVariable(lon_name, 'f4', (dim_y_name, dim_x_name, ))
     lon.units = 'degrees_east'
     lon.standard_name = 'longitude'
     lon.long_name = 'longitude coordinate'
