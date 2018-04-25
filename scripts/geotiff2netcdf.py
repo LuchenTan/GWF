@@ -88,7 +88,7 @@ def proj4TOdict(proj4_str):
             proj_dict[item.split('=')[0]] = item.split('=')[1]
     if '+units' not in proj_dict:
         print('Unit name is missing in the proj.4 string')
-        proj_dict['+units'] = 'm'
+        proj_dict['+units'] = 'UNKNOWN'
     if '+proj' not in proj_dict:
         print('Projection name is missing in the proj.4 string')
         proj_dict['+proj'] = 'UNKNOWN'
@@ -132,14 +132,13 @@ def parseFilename(filename):
 
 
 # set up data variable based on file name tail
-def dataVariable(tail, nc_handle, data, dim_y_name, dim_x_name, lat_name, lon_name):
+def dataVariablename(tail):
     unit_1, unit_k = '1', 'degree_kelvin'
     var_name_pre_avg = 'LST_LWST_avg_'
     long_name_pre_avg = ' average temperature'
     var_name_pre_num = 'N_obs_avg_'
     long_name_pre_num = 'number of observations used to calculate '
     var_name, units, long_name = '', '', ''
-    missing_value_num = 0
     if tail == '001':
         var_name = var_name_pre_avg + 'daily'
         units = unit_k
@@ -164,18 +163,7 @@ def dataVariable(tail, nc_handle, data, dim_y_name, dim_x_name, lat_name, lon_na
         var_name = var_name_pre_num + 'night'
         units = unit_1
         long_name = long_name_pre_num + 'night' + long_name_pre_avg
-
-    var = nc_handle.createVariable(var_name, data.dtype, ('time', dim_y_name, dim_x_name,),
-                                   fill_value=netCDF4.default_fillvals[data.dtype.str[1:]])
-    # assign the masked array to data variable
-    data = np.ma.masked_invalid(data)
-    data.set_fill_value(netCDF4.default_fillvals[data.dtype.str[1:]])
-    var[:] = [data]
-
-    setattr(var, 'units', units)
-    setattr(var, 'long_name', long_name)
-    setattr(var, 'coordinates', lat_name + ' ' + lon_name)
-    return var
+    return var_name, units, long_name
 
 
 # do the conversion
@@ -209,26 +197,26 @@ def convert(in_source, out_dir, out_source_name=None, dim_x_name='x', dim_y_name
     proj_info_dict, proj_units = proj4TOdict(proj4)
     # create variables
     # original coordinate variables
-    proj_x = out_nc.createVariable('x', 'i4', (dim_x_name, ))
+    proj_x = out_nc.createVariable('x', xcoordinates.dtype, (dim_x_name, ))
     proj_x.units = proj_units
     proj_x.standard_name = 'projection_x_coordinate'
     proj_x.long_name = 'x coordinate of projection'
     proj_x[:] = xcoordinates
 
-    proj_y = out_nc.createVariable('y', 'i4', (dim_y_name, ))
+    proj_y = out_nc.createVariable('y', ycoordinates.dtype, (dim_y_name, ))
     proj_y.units = proj_units
     proj_y.standard_name = 'projection_y_coordinate'
     proj_y.long_name = 'y coordinate of projection'
     proj_y[:] = ycoordinates
 
     # auxiliary coordinate variables lat and lon
-    lat = out_nc.createVariable(lat_name, 'f4', (dim_y_name, dim_x_name, ))
+    lat = out_nc.createVariable(lat_name, lats.dtype, (dim_y_name, dim_x_name, ))
     lat.units = 'degrees_north'
     lat.standard_name = 'latitude'
     lat.long_name = 'latitude coordinate'
     lat[:] = lats[:]
 
-    lon = out_nc.createVariable(lon_name, 'f4', (dim_y_name, dim_x_name, ))
+    lon = out_nc.createVariable(lon_name, lons.dtype, (dim_y_name, dim_x_name, ))
     lon.units = 'degrees_east'
     lon.standard_name = 'longitude'
     lon.long_name = 'longitude coordinate'
@@ -251,11 +239,23 @@ def convert(in_source, out_dir, out_source_name=None, dim_x_name='x', dim_y_name
     create_grid_mapping_variable(grid_map, proj_info_dict, spatial_ref)
 
     # create data variable
-    var_data = dataVariable(tail, out_nc, band1data, dim_y_name, dim_x_name, lat_name, lon_name)
+    var_name, units, long_name = dataVariablename(tail)
+    var_data = out_nc.createVariable(var_name, band1data.dtype,
+                                     ('time', dim_y_name, dim_x_name, ),
+                                     fill_value=netCDF4.default_fillvals[band1data.dtype.str[1:]])
+
+    # assign the masked array to data variable
+    data = np.ma.masked_invalid(band1data)
+    data.set_fill_value(netCDF4.default_fillvals[band1data.dtype.str[1:]])
+    var_data[:] = [data]
+
+    var_data.units = units
+    var_data.long_name = long_name
+    var_data.coordinates = lat_name + ' ' + lon_name
     var_data.grid_mapping = grid_map_name
+
     # temporal resolution attribute for the data variable
     file_end_datetime = datetime.strptime(' '.join([end_date, end_time]), '%Y.%m.%d %H.%M.%S')
-    temp_res = ''
     delta = (file_end_datetime - file_date).days
     if delta == 1:
         temp_res = 'daily'
