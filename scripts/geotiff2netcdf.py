@@ -165,10 +165,11 @@ def dataVariable(tail, nc_handle, data, dim_y_name, dim_x_name, lat_name, lon_na
         units = unit_1
         long_name = long_name_pre_num + 'night' + long_name_pre_avg
 
-    var = nc_handle.createVariable(var_name, 'f4', ('time', dim_y_name, dim_x_name,), fill_value=netCDF4.default_fillvals['f4'])
+    var = nc_handle.createVariable(var_name, data.dtype, ('time', dim_y_name, dim_x_name,),
+                                   fill_value=netCDF4.default_fillvals[data.dtype.str[1:]])
     # assign the masked array to data variable
     data = np.ma.masked_invalid(data)
-    data.set_fill_value(netCDF4.default_fillvals['f4'])
+    data.set_fill_value(netCDF4.default_fillvals[data.dtype.str[1:]])
     var[:] = [data]
 
     setattr(var, 'units', units)
