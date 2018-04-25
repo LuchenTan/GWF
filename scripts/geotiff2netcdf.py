@@ -258,8 +258,12 @@ def convert(in_source, out_dir, out_source_name=None, dim_x_name='x', dim_y_name
         temp_res = 'daily'
     elif delta == 7:
         temp_res = 'weekly'
-    else:
+    elif delta == 14:
+        temp_res = 'biweekly'
+    elif 28 <= delta <= 31:
         temp_res = 'monthly'
+    else:
+        temp_res = 'UNKOWN'
     setattr(var_data, 'temporal_resolution', temp_res)
 
 
