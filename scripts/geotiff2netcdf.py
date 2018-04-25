@@ -31,11 +31,36 @@ PROJ_LST = {
 PARAM_LST = {
     '+x_0': 'false_easting',
     '+y_0': 'false_northing',
-    '+k_0': 'scale_factor_at_projection_origin',
-    '+lat_1': 'standard_parallel![1]',
-    '+lat_2': 'standard_parallel![2]',
-    '+lon_0': 'longitude_of_projection_origin',
+    '+k_0': {'lcc': 'scale_factor',
+             'merc': 'scale_factor_at_projection_origin',
+             'stere': 'scale_factor_at_projection_origin',
+             'tmerc': 'scale_factor_at_central_meridian',
+             'default': 'scale_factor'
+             },
+    '+lat_1': {'aea': 'standard_parallel[1]',
+               'lcc': 'standard_parallel',
+               'default': 'standard_parallel[1]'
+               },
+    '+lat_2': {'aea': 'standard_parallel[2]',
+               'lcc': 'standard_parallel[2]',
+               'default': 'standard_parallel[2]'
+               },
+    '+lon_0': {'aea': 'longitude_of_central_meridian',
+               'aeqd': 'longitude_of_projection_origin',
+               'laea': 'longitude_of_projection_origin',
+               'lcc': 'longitude_of_central_meridian',
+               'cea': 'longitude_of_central_meridian',
+               'merc': 'longitude_of_projection_origin',
+               'ortho': 'longitude_of_projection_origin',
+               'stere': 'straight_vertical_longitude_from_pole',
+               'tmerc': 'longitude_of_central_meridian',
+               'default': 'longitude_of_projection_origin'
+               },
     '+lat_0': 'latitude_of_projection_origin',
+    '+lat_ts': {'cea': 'standard_parallel[1]',
+                'merc': 'standard_parallel[1]',
+                'stere': 'standard_parallel',
+                'default': 'standard_parallel'},
     '+units': 'units',
     '+a': 'semi_major_axis',
     '+b': 'semi_minor_axis'
@@ -56,6 +81,7 @@ def readFile(filename):
     geotransform = ds.GetGeoTransform()
     geoproj = ds.GetProjection()
     meta = ds.GetMetadata()
+    #bandtype = gdal.GetDataTypeName(band1.DataType)
     band1data = band1.ReadAsArray()
     xsize = ds.RasterXSize
     ysize = ds.RasterYSize
@@ -65,11 +91,16 @@ def readFile(filename):
 # get coordinate values
 def getCoordinates(xsize, ysize, geotransform):
     x_topleft, x_res, dx_rotation, y_topleft, dy_rotation, y_res = geotransform
-    xcoordinates = np.arange(start=x_topleft, stop=x_topleft + x_res * xsize, step=x_res,
-                             dtype=np.float32)
-    ycoordinates = np.arange(start=y_topleft, stop=y_topleft + y_res * ysize, step=y_res,
-                             dtype=np.float32)
-    return xcoordinates, ycoordinates
+    if dx_rotation == 0 and dy_rotation == 0:
+        xcoordinates = np.arange(start=x_topleft, stop=x_topleft + x_res * xsize, step=x_res,
+                                dtype=np.float32)
+        ycoordinates = np.arange(start=y_topleft, stop=y_topleft + y_res * ysize, step=y_res,
+                                dtype=np.float32)
+        return xcoordinates, ycoordinates
+    else:
+        ## TODO: need rotation
+        print("x and y coordinates need rotation!")
+        sys.exit(1)
 
 
 # unprojec to lat/lon
@@ -109,7 +140,13 @@ def create_grid_mapping_variable(var_grid_mapping, proj_dict, spatial_reference)
     for key, value in proj_dict.items():
         try:
             cf_name = PARAM_LST[key]
-            setattr(var_grid_mapping, cf_name, value)
+            if isinstance(cf_name, dict):
+                try:
+                    setattr(var_grid_mapping, cf_name[projection], value)
+                except KeyError:
+                    setattr(var_grid_mapping, cf_name['default'], value)
+            else:
+                setattr(var_grid_mapping, cf_name, value)
         except KeyError:
             pass
     setattr(var_grid_mapping, 'crs_wkt', str(spatial_reference))
