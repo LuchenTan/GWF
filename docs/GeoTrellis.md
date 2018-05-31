@@ -194,4 +194,8 @@ $ docker-compose run --rm gt-chatta-ingest
 第一步下载了n多的jar, 还没下载完被我中断了。试试GeoDocker cluster(不知道是什么）
 11. 在主目录下，将Vagrantfile里的GT_CHATTA_VM_MEMORY参数设置改成了6144。 ```vagrant reload```。成功了以后```vagrant ssh```。 
 
-进入虚拟机，```make build-geodocker```， 继续下载没下完的jar包。
+进入虚拟机，先```vagrant up``` 再```vagrant ssh```。 ```make build-geodocker```， 继续下载没下完的jar包。
+
+12. 运行```docker info```时有permission limit问题。所以用sudo运行，可以。
+用sudo运行```make build-geodocker```：
+
