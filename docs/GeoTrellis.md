@@ -83,7 +83,8 @@ mkdir ~/.aws
 ```
 解决了3的错误。
 
-6. 重新运行```./scripts/setup```。
+6. 重新运行```./scripts/setup```
+
 报新的错误：
 ```
 It appears your machine doesn't support NFS, or there is not an
@@ -92,10 +93,12 @@ that `nfsd` is installed on your machine, and try again. If you're
 on Windows, NFS isn't supported. If the problem persists, please
 contact Vagrant support.
 ```
-。 
+
 解决方法， 安装NFS：
-```sudo apt-get install nfs-kernel-server
 ```
+sudo apt-get install nfs-kernel-server
+```
+
 7. 这个之后虚拟机可以启动，下载配件，设置成功。但是Download ingnest data时，报错，
 ```
 ~/geotrellis-chatta-demo/service/geotrellis/data ~/geotrellis-chatta-demo
