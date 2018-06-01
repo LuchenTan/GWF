@@ -197,5 +197,22 @@ $ docker-compose run --rm gt-chatta-ingest
 进入虚拟机，先```vagrant up``` 再```vagrant ssh```。 ```make build-geodocker```， 继续下载没下完的jar包。
 
 12. 运行```docker info```时有permission limit问题。所以用sudo运行，可以。
-用sudo运行```make build-geodocker```：
+用sudo运行```make build-geodocker```。
+
+13. 可以跑起来server了！
+
+总结问题：
+
+```./scripts/setup```里运行了虚拟机的配置，加载，```vagrant up```，之后运行```./scripts/update```。
+
+在update里面有aws s3 download，但一直报错说没有geotrellis-site profile的信息。所以没法下载。 在demo的git repo里，有一个issue也是问的这个问题，
+项目组的人回答说是data都已经在repo里了。 所以注释掉update里的下载。
+
+之后运行```./scripts/server```， 一直报8777端口被占用的错误。怀疑是之前尝试启动server但是没有完全成功，但端口已经开始监听。 所以运行```vagrant halt```先stop虚拟机和端口占用，再启动server就可以了。 ```http://localhost:8777```可以加载地图，有界面，但没有数据，server端也一直报内部错误。
+
+仔细对比git repo里和clone下来的data， tiff文件发现，文件大小都不对。应该是需要用Git LFS将数据完整的下载下来。
+
+14. Git LFS下载数据
+
+
 
