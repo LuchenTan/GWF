@@ -4,6 +4,19 @@ GeoTrellis is a geographic data processing engine for high performance applicati
 GeoTrellis[介绍](https://www.helplib.com/GitHub/article_79483)的中文
 学习主要涉及到的知识点： Scala， sbt， Spark， Akka
 
+### 其他一些可能相关的项目：
+* Openlayers, OpenStreet画地图：
+
+[Drawing maps from geodata with D3 & Observable](https://beta.observablehq.com/@floledermann/drawing-maps-from-geodata-in-d3)
+
+[OpenLayers Examples](https://openlayers.org/en/latest/examples/box-selection.html)
+
+[Leaflet](https://leafletjs.com/examples/geojson/)
+
+[WikiWatershed](https://app.wikiwatershed.org/)， 一个根据地图上位置可以生成下载数据的project。
+
+* Geoserver
+
 ## GeoTrellis Chatta Demo
 GeoTrellis的一个开源的例子[geotrellis-chatta-demo](https://github.com/geotrellis/geotrellis-chatta-demo).
 另外一个[demo](https://www.helplib.com/GitHub/article_79483)。
@@ -151,8 +164,10 @@ machine.
 $ vagrant global-status
 ```
 然后用命令```vagrant destroy ID``` 将之前running的kill掉。
+
 8. 重新在/home下git clone Demo repo。 运行setup。
 一直不能download Demo Data。
+
 报错：
 ```
 botocore.exceptions.ProfileNotFound: The config profile (geotrellis-site) could not be found
@@ -209,7 +224,7 @@ $ docker-compose run --rm gt-chatta-ingest
 ```./scripts/setup```里运行了虚拟机的配置，加载，```vagrant up```，之后运行```./scripts/update```。
 
 在update里面有aws s3 download，但一直报错说没有geotrellis-site profile的信息。所以没法下载。 在demo的git repo里，有一个issue也是问的这个问题，
-项目组的人回答说是data都已经在repo里了。 所以注释掉update里的下载。
+项目组的人回答说是data都已经在repo里了。 所以注释掉update里的下载。 也不需要配置aws 的config和credential了。
 
 之后运行```./scripts/server```， 一直报8777端口被占用的错误。怀疑是之前尝试启动server但是没有完全成功，但端口已经开始监听。 所以运行```vagrant halt```先stop虚拟机和端口占用，再启动server就可以了。 ```http://localhost:8777```可以加载地图，有界面，但没有数据，server端也一直报内部错误。
 
