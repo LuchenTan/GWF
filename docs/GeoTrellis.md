@@ -232,5 +232,36 @@ $ docker-compose run --rm gt-chatta-ingest
 
 14. Git LFS下载数据
 
+安装之后， 在project repo里run： ```git lfs fetch``` 或者是```git lfs pull```， 不知道哪个workle。
+
+15. 有了数据，也把data文件夹名字改成chatta-demo了，可是还是有一样的Error。但是chatta-demo文件夹里每次都多出来一个空的文件夹，attributes。
+
+怀疑是不是没有硬盘的写权限。用sudo重新run虚拟机。但是由于之前不是sudo用户，所以报错：
+
+```
+The VirtualBox VM was created with a user that doesn't match the current user running Vagrant. VirtualBox requires that the same user be used to manage the VM that was created. Please re-run Vagrant with that user. This is not a Vagrant issue.
+
+The UID used to create the VM was: 1001 Your UID is: 0
+```
+
+按照stackoverflow的方法， 将project文件夹里的这个文件```.vagrant/machines/default/virtualbox/creator_uid```内容从1001 改成0， 就可以了。
+
+之后需要```vagrant halt```一下。再重新用sudo setup。 还是一样的错误。。。。
+```
+gt-chatta_1         | [ERROR] [06/01/2018 15:58:49.003] [chatta-demo-akka.actor.default-dispatcher-7] [akka.actor.ActorSystemImpl(chatta-demo)] Error during processing of request: 'Layer Layer(name = "ImperviousSurfacesBarrenLandsOpenWater", zoom = 9) not found in the catalog'. Completing with 500 Internal Server Error response.
+```
+无论在网页上做任何操作，都报这个错误。
+
+16. 看看catalog是什么东西
+
+**A catalog is a directory where saved layers and their attributes are organized and stored in a certain manner. Within a catalog, there can exist multiple layers from different data sets. Each of these layers, in turn, are their own directories which contain two folders: one where the data is stored and the other for the metadata. The data for each layer is broken up into zoom levels and each level has its own folder within the data folder of the layer. As for the metadata, it is also broken up by zoom level and is stored as json files within the metadata folder.**
+
+Geopyspark对Catalog的解释。就是说，应该有程序把原始的tiff文件都切片，以上面说的形式存在数据文件夹里。zoom levels值得应该是程序设定的可以zoom in的等级。 反复开启server一直是报15的错误，现在懂了，是没有这些切片文件。看来ingest data的过程应该就是切片的过程。如果S3可以下载成功的话，应该包含了这些切片。
+
+查看```service/geotrellis/conf```里有input.json, 里面指明了git repo里回答的data存放的位置，指出了这些文件。看来应该需要把这些原始的GeoTiff都切片。
+
+于是重新看了ingest section，运行了local的。这里说需要先run ```gt-chatta assembly```, 之前run过了，没问题。再build ```gt-chatta-ingest```， 也build成功了，没问题。现在run```gt-chatta-ingest```. README里说run这个的时候会run a ```spark-submit``` job， 吧这些切片数据都写道local filesystem。 于是跑了一下，真的可以了。在```service/geotrellis/data/chatta-demo```下写入了很多文件。之前这步一直报的好像是spark的错误（忘记了）。
+
+
 
 
