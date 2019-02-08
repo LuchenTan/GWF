@@ -93,9 +93,9 @@ def getCoordinates(xsize, ysize, geotransform):
     x_topleft, x_res, dx_rotation, y_topleft, dy_rotation, y_res = geotransform
     if dx_rotation == 0 and dy_rotation == 0:
         xcoordinates = np.arange(start=x_topleft, stop=x_topleft + x_res * xsize, step=x_res,
-                                dtype=np.float32)
+                                 dtype=np.float32)
         ycoordinates = np.arange(start=y_topleft, stop=y_topleft + y_res * ysize, step=y_res,
-                                dtype=np.float32)
+                                 dtype=np.float32)
         return xcoordinates, ycoordinates
     else:
         ## TODO: need rotation
@@ -167,7 +167,8 @@ def parseFilename(filename):
     if tail not in ['001', '002', '003', '004', '005', '006']:
         print(fname + ' is not valid!', 'Please select a GeoTIFF file named of 001 to 006')
         return False
-    return start_date, start_time, end_date, end_time, fname, tail
+    basename = items[0:5]
+    return start_date, start_time, end_date, end_time, fname, basename, tail
 
 
 # set up data variable based on file name tail
@@ -206,14 +207,14 @@ def dataVariablename(tail):
 
 
 # do the conversion
-def convert(in_source, out_dir, out_source_name=None, dim_x_name='x', dim_y_name='y', lat_name='lat', lon_name='lon'):
+def convert(in_source, out_dir, out_source_name=None, dim_x_name='rlon', dim_y_name='rlat', lat_name='lat', lon_name='lon', nc_custom_meta=[]):
     if not parseFilename(in_source):
         return
 
     # parse the in source file name
-    start_date, start_time, end_date, end_time, fname, tail = parseFilename(in_source)
+    start_date, start_time, end_date, end_time, fname, basename, tail = parseFilename(in_source)
     if not out_source_name:
-        out_source = os.path.join(out_dir, fname + '.nc')
+        out_source = os.path.join(out_dir, '_'.join(basename) + '.nc')
     else:
         out_source = os.path.join(out_dir, out_source_name)
 
@@ -221,104 +222,136 @@ def convert(in_source, out_dir, out_source_name=None, dim_x_name='x', dim_y_name
     xsize, ysize, band1data, geotransform, geoproj, meta = readFile(in_source)
     xcoordinates, ycoordinates = getCoordinates(xsize, ysize, geotransform)
 
-    # create netCDF file
-    out_nc = netCDF4.Dataset(out_source, 'w')
-    # define dimensions
-    dim_x = out_nc.createDimension(dim_x_name, xsize)
-    dim_y = out_nc.createDimension(dim_y_name, ysize)
-    dim_time = out_nc.createDimension('time', None)
-
     # get projection info and do the unprojection
     spatial_ref = osr.SpatialReference()
     spatial_ref.ImportFromWkt(geoproj)
     lons, lats, proj4 = unproject(xcoordinates, ycoordinates, spatial_ref)
 
+    nc_file_exists = os.path.isfile(out_source)
+
     proj_info_dict, proj_units = proj4TOdict(proj4)
-    # create variables
-    # original coordinate variables
-    proj_x = out_nc.createVariable('x', xcoordinates.dtype, (dim_x_name, ))
-    proj_x.units = proj_units
-    proj_x.standard_name = 'projection_x_coordinate'
-    proj_x.long_name = 'x coordinate of projection'
-    proj_x[:] = xcoordinates
+    grid_map_name = PROJ_LST[proj_info_dict['+proj']]
+    time_units = 'hours since 1990-01-01 00:00:00'
+    time_calendar = 'gregorian'
 
-    proj_y = out_nc.createVariable('y', ycoordinates.dtype, (dim_y_name, ))
-    proj_y.units = proj_units
-    proj_y.standard_name = 'projection_y_coordinate'
-    proj_y.long_name = 'y coordinate of projection'
-    proj_y[:] = ycoordinates
+    if not nc_file_exists:
+        out_nc = netCDF4.Dataset(out_source, 'w')
 
-    # auxiliary coordinate variables lat and lon
-    lat = out_nc.createVariable(lat_name, 'f4', (dim_y_name, dim_x_name, ))
-    lat.units = 'degrees_north'
-    lat.standard_name = 'latitude'
-    lat.long_name = 'latitude coordinate'
-    lat[:] = lats[:]
+        # define dimensions
+        dim_x = out_nc.createDimension(dim_x_name, xsize)
+        dim_y = out_nc.createDimension(dim_y_name, ysize)
+        dim_time = out_nc.createDimension('time', None)
 
-    lon = out_nc.createVariable(lon_name, 'f4', (dim_y_name, dim_x_name, ))
-    lon.units = 'degrees_east'
-    lon.standard_name = 'longitude'
-    lon.long_name = 'longitude coordinate'
-    lon[:] = lons[:]
+        # create variables
+        # original coordinate variables
+        proj_x = out_nc.createVariable(dim_x_name, xcoordinates.dtype, (dim_x_name, ))
+        proj_x.units = proj_units
+        proj_x.standard_name = 'projection_x_coordinate'
+        proj_x.long_name = 'x coordinate of projection'
+        proj_x[:] = xcoordinates
 
-    # time variable
-    var_time = out_nc.createVariable('time', 'i4', ('time', ))
-    var_time.units = 'hours since 1990-01-01 00:00:00'
-    var_time.calendar = 'gregorian'
-    var_time.standard_name = 'time'
-    var_time.axis = 'T'
+        proj_y = out_nc.createVariable(dim_y_name, ycoordinates.dtype, (dim_y_name, ))
+        proj_y.units = proj_units
+        proj_y.standard_name = 'projection_y_coordinate'
+        proj_y.long_name = 'y coordinate of projection'
+        proj_y[:] = ycoordinates
+
+        # auxiliary coordinate variables lat and lon
+        lat = out_nc.createVariable(lat_name, 'f4', (dim_y_name, dim_x_name, ))
+        lat.units = 'degrees_north'
+        lat.standard_name = 'latitude'
+        lat.long_name = 'latitude coordinate'
+        lat[:] = lats[:]
+
+        lon = out_nc.createVariable(lon_name, 'f4', (dim_y_name, dim_x_name, ))
+        lon.units = 'degrees_east'
+        lon.standard_name = 'longitude'
+        lon.long_name = 'longitude coordinate'
+        lon[:] = lons[:]
+
+        # time variable
+        var_time = out_nc.createVariable('time', 'i4', ('time', ))
+        var_time.units = time_units
+        var_time.calendar = time_calendar
+        var_time.standard_name = 'time'
+        var_time.axis = 'T'
+
+        # grid mapping variable
+        grid_map = out_nc.createVariable(grid_map_name, 'c', )
+        create_grid_mapping_variable(grid_map, proj_info_dict, spatial_ref)
+
+        out_nc.Conventions = 'CF-1.6'
+        out_nc.institution = 'University of Waterloo'
+        for key, value in meta.items():
+            key_name = key.split('_')[1]
+            if key_name not in ['DATETIME', 'DOCUMENTNAME']:
+                setattr(out_nc, key, value)
+        
+        # set additional nc attributes as specified by user
+        for key, value in nc_custom_meta.items():
+            setattr(out_nc, key, value)
+            
+    else:
+        out_nc = netCDF4.Dataset(out_source, 'r+')
 
     # data for time variable
     file_date = datetime.strptime(' '.join([start_date, start_time]), '%Y.%m.%d %H.%M.%S')
-    var_time[:] = date2num([file_date], units=var_time.units, calendar=var_time.calendar)
+    file_date_num = date2num([file_date], units=time_units, calendar=time_calendar)[0]
+    if len(out_nc['time'][:]) == 0 or file_date_num != out_nc['time'][-1]:
+        out_nc['time'][:] = np.append(out_nc['time'][:], file_date_num)
 
-    # grid mapping variable
-    grid_map_name = PROJ_LST[proj_info_dict['+proj']]
-    grid_map = out_nc.createVariable(grid_map_name, 'c', )
-    create_grid_mapping_variable(grid_map, proj_info_dict, spatial_ref)
-
-    # create data variable
-    var_name, units, long_name = dataVariablename(tail)
-    var_data = out_nc.createVariable(var_name, band1data.dtype,
-                                     ('time', dim_y_name, dim_x_name, ),
-                                     fill_value=netCDF4.default_fillvals[band1data.dtype.str[1:]])
-
-    # assign the masked array to data variable
     data = np.ma.masked_invalid(band1data)
     data.set_fill_value(netCDF4.default_fillvals[band1data.dtype.str[1:]])
-    var_data[:] = [data]
 
-    var_data.units = units
-    var_data.long_name = long_name
-    var_data.coordinates = lat_name + ' ' + lon_name
-    var_data.grid_mapping = grid_map_name
+    var_name, units, long_name = dataVariablename(tail)
+    if var_name not in out_nc.variables.keys():
+        # create data variable
+        var_data = out_nc.createVariable(var_name, band1data.dtype,
+                                         ('time', dim_y_name, dim_x_name, ),
+                                         fill_value=netCDF4.default_fillvals[band1data.dtype.str[1:]])
 
-    # temporal resolution attribute for the data variable
-    file_end_datetime = datetime.strptime(' '.join([end_date, end_time]), '%Y.%m.%d %H.%M.%S')
-    delta = (file_end_datetime - file_date).days
-    if delta == 1:
-        temp_res = 'daily'
-    elif delta == 7:
-        temp_res = 'weekly'
-    elif delta == 14:
-        temp_res = 'biweekly'
-    elif 28 <= delta <= 31:
-        temp_res = 'monthly'
+        # assign the masked array to data variable
+        var_data[:] = [data]
+
+        var_data.units = units
+        var_data.long_name = long_name
+        var_data.coordinates = lat_name + ' ' + lon_name
+        var_data.grid_mapping = grid_map_name
+
+        # temporal resolution attribute for the data variable
+        file_end_datetime = datetime.strptime(' '.join([end_date, end_time]), '%Y.%m.%d %H.%M.%S')
+        delta = (file_end_datetime - file_date).days
+        if delta == 1:
+            temp_res = 'daily'
+        elif delta == 7:
+            temp_res = 'weekly'
+        elif delta == 14:
+            temp_res = 'biweekly'
+        elif 28 <= delta <= 31:
+            temp_res = 'monthly'
+        else:
+            temp_res = 'UNKNOWN'
+        setattr(var_data, 'temporal_resolution', temp_res)
     else:
-        temp_res = 'UNKOWN'
-    setattr(var_data, 'temporal_resolution', temp_res)
-
-
-    out_nc.Conventions = 'CF-1.6'
-    out_nc.institution = 'University of Waterloo'
-    for key, value in meta.items():
-        key_name = key.split('_')[1]
-        if not key_name in ['DATETIME', 'DOCUMENTNAME']:
-            setattr(out_nc, key, value)
+        out_nc[var_name][-1] = data
 
     out_nc.close()
 
 
 if __name__ == '__main__':
-    for f in os.listdir('../data'):
-        convert(os.path.join('../data', f), out_dir='../converted_data')
+    
+    if len(sys.argv) < 3:
+        print('Usage: python geotiff2netcdf.py <geotiff_dir> <output_dir> nc_attribute1_name attr1_value nc_attribute2_name attr2_value ...')
+        sys.exit(1)
+    
+    geotiff_dir = sys.argv[1]
+    out_dir = sys.argv[2]
+    nc_metadata_attrs = dict(zip(sys.argv[3::2], sys.argv[4::2]))
+
+    files = filter((lambda f: f[0] is not False), ((parseFilename(f),f) for f in os.listdir(geotiff_dir)))
+    files = list((datetime.strptime(f[0][0] + f[0][1], '%Y.%m.%d%H.%M.%S'), f[1]) for f in files)
+
+    # process in sorted order so we can subsequently append to the netcdf output file
+    for _, f in sorted(files):
+        print('Next file: {}'.format(f))
+        convert(os.path.join(geotiff_dir, f), out_dir=out_dir, nc_custom_meta=nc_metadata_attrs)
