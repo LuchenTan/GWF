@@ -5,6 +5,7 @@ import netCDF4
 import os
 import ntpath
 import datetime
+import calendar
 from netCDF4 import date2num
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -20,6 +21,10 @@ def parse_filename(filename, prefix):
         return False
     items = f_name.replace(prefix, '').split('_')
     year, day = int(items[0]), int(items[1])
+
+    if calendar.isleap(year) and day > 60:  # only leap years have a day 60
+        day = day - 1
+
     start_date = datetime.datetime(year, 1, 1) + datetime.timedelta(day - 1)
     end_date = datetime.datetime(year, 1, 1) + datetime.timedelta(day)
 
