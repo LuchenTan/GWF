@@ -34,8 +34,12 @@ def data_variablename(prefix):
         var_name = 'pcp'
         units = unit_pcp
         long_name = 'Precipitation'
-    elif prefix == 'maxtemperature':
+    elif prefix == 'max':
         var_name = 'maxtemperature'
+        units = unit_temp
+        long_name = 'Temperature'
+    elif prefix == 'min':
+        var_name = 'mintemperature'
         units = unit_temp
         long_name = 'Temperature'
     return var_name, units, long_name
