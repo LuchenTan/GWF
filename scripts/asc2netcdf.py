@@ -22,7 +22,7 @@ def parse_filename(filename, prefix):
     items = f_name.replace(prefix, '').split('_')
     year, day = int(items[0]), int(items[1])
 
-    if calendar.isleap(year) and day > 60:  # only leap years have a day 60
+    if (not calendar.isleap(year)) and day > 60:  # only leap years have a day 60
         day = day - 1
 
     start_date = datetime.datetime(year, 1, 1) + datetime.timedelta(day - 1)
@@ -65,7 +65,6 @@ def convert(prefix, in_source, out_dir, proj_str, out_source_name=None, nc_custo
     # read in source file
     x_size, y_size, band1data, geotransform, geoproj, meta = read_file(in_source)
     x_coordinates, y_coordinates = get_coordinates(x_size, y_size, geotransform)
-
 
     # get projection info and do the unprojection
     spatial_ref = osr.SpatialReference()
