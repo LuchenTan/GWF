@@ -3,7 +3,7 @@ import numpy as np
 import netCDF4
 
 
-def merge_files(main_file_name, second_file_name, variables_to_merge):
+def merge_files(main_file_name, second_file_name, variables_to_merge, x_name='rlon', y_name='rlat'):
     """
     Merges the time slices of the second file into the first one. The files need to contain the same variables
     and dimensions (except for the time dimension)
@@ -14,6 +14,8 @@ def merge_files(main_file_name, second_file_name, variables_to_merge):
         File containing the newer time slices.
     :param variables_to_merge:
         Variables to be merged into the first file.
+    :param x_name: Name of x dimension
+    :param y_name: Name of y dimension
     """
     main_file = netCDF4.Dataset(main_file_name, 'r+')
     second_file = netCDF4.Dataset(second_file_name, 'r')
@@ -27,8 +29,10 @@ def merge_files(main_file_name, second_file_name, variables_to_merge):
     if sorted(main_file.variables.keys()) != sorted(second_file.variables.keys()):
         raise Exception('Variables don\'t match')
 
-    if (main_file['x'][:] != second_file['x'][:]).any() or (main_file['y'][:] != second_file['y'][:]).any() \
-        or (main_file['lat'][:] != second_file['lat'][:]).any() or (main_file['lon'][:] != second_file['lon'][:]).any():
+    if (main_file[x_name][:] != second_file[x_name][:]).any() \
+            or (main_file[y_name][:] != second_file[y_name][:]).any() \
+            or (main_file['lat'][:] != second_file['lat'][:]).any() \
+            or (main_file['lon'][:] != second_file['lon'][:]).any():
         raise Exception('x/y or lat/lon dimensions don\'t match')
 
     if main_file.ncattrs() != second_file.ncattrs() or main_file.dimensions.keys() != second_file.dimensions.keys():
@@ -52,13 +56,15 @@ def merge_files(main_file_name, second_file_name, variables_to_merge):
 
 if __name__ == '__main__':
 
-    if len(sys.argv) != 3:
-        raise Exception('Usage: python merge-netcdf.py mainFile.nc secondFile.nc')
+    if len(sys.argv) < 6:
+        raise Exception('Usage: python merge-netcdf.py mainFile.nc secondFile.nc x_dim_name y_dim_name '
+                        'var_to_merge_1 var_to_merge_2 ...')
 
     file_main = sys.argv[1]
     file_two = sys.argv[2]
+    x_dim_name = sys.argv[3]
+    y_dim_name = sys.argv[4]
 
-    variables_to_merge = ['LST_LWST_avg_daily', 'N_obs_avg_daily', 'LST_LWST_avg_day', 'N_obs_avg_day',
-                          'LST_LWST_avg_night', 'N_obs_avg_night']
+    variables_to_merge = sys.argv[5:]
 
-    merge_files(file_main, file_two, variables_to_merge)
+    merge_files(file_main, file_two, variables_to_merge, x_dim_name, y_dim_name)
