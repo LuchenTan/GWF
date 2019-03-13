@@ -103,7 +103,6 @@ def convert(in_source, out_dir, out_source_name=None, nc_custom_meta=[]):
         out_nc['time'][:] = np.append(out_nc['time'][:], file_date_num)
 
     data = np.ma.masked_invalid(band1data)
-    data.set_fill_value(netCDF4.default_fillvals[band1data.dtype.str[1:]])
 
     var_name, units, long_name = data_variablename(tail)
     file_end_datetime = datetime.strptime(' '.join([end_date, end_time]), '%Y.%m.%d %H.%M.%S')

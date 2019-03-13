@@ -78,9 +78,11 @@ def read_file(filename):
     meta = ds.GetMetadata()
     # bandtype = gdal.GetDataTypeName(band1.DataType)
     band1data = band1.ReadAsArray()
+    masked_band1 = np.ma.masked_where(band1data == band1.GetNoDataValue(), band1data)
+    masked_band1.set_fill_value(band1.GetNoDataValue())
     x_size = ds.RasterXSize
     y_size = ds.RasterYSize
-    return x_size, y_size, band1data, geotransform, geoproj, meta
+    return x_size, y_size, masked_band1, geotransform, geoproj, meta
 
 
 # get coordinate values
@@ -219,7 +221,7 @@ def populate_nc_file(out_nc, data, start_date, end_date, units, band1data, var_n
         # create data variable
         var_data = out_nc.createVariable(var_name, band1data.dtype,
                                          ('time', dim_y_name, dim_x_name,),
-                                         fill_value=netCDF4.default_fillvals[band1data.dtype.str[1:]])
+                                         fill_value=band1data.get_fill_value())
 
         # assign the masked array to data variable
         var_data[:] = [data]

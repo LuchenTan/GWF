@@ -93,7 +93,6 @@ def convert(prefix, in_source, out_dir, proj_str, out_source_name=None, nc_custo
         out_nc['time'][:] = np.append(out_nc['time'][:], file_date_num)
 
     data = np.ma.masked_invalid(band1data)
-    data.set_fill_value(netCDF4.default_fillvals[band1data.dtype.str[1:]])
 
     var_name, units, long_name = data_variablename(prefix)
 
