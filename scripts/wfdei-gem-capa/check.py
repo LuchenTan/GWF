@@ -9,7 +9,7 @@ def generate_points(_year):
     for i in range(10):
         point = []
         new_time = randint(0, 2919)
-        old_time = new_time + (_year - 1951) * 2920
+        old_time = new_time + (_year - 1979) * 2920
         lat = randint(0, 327)
         lon = randint(0, 799)
 
@@ -110,6 +110,21 @@ def check_rsds():
     return result
 
 
+def check_rsds_thresholded():
+    new_ds = Dataset(new_file, 'r')
+    old_ds = Dataset(rsds_thres_file, 'r')
+
+    new_data = new_ds['rsds_thresholded']
+    old_data = old_ds['rsds']
+
+    result = check_data(new_data, old_data)
+
+    new_ds.close()
+    old_ds.close()
+
+    return result
+
+
 def check_wind_speed():
     new_ds = Dataset(new_file, 'r')
     old_ds = Dataset(wind_speed_file, 'r')
@@ -141,25 +156,25 @@ def check_ta():
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 3:
-        raise Exception('arg1: ensemble membler\narg2: year')
+    if len(sys.argv) < 2:
+        raise Exception('arg1: year')
 
-    ensemble_member = sys.argv[1]
-    year = sys.argv[2]
+    year = sys.argv[1]
 
-    new_file = './' + year + '_' + ensemble_member + '.nc'
-    hus_file = './' + 'huss_'+ ensemble_member + '_final.nc'
-    pr_file = './' + 'pr_' + ensemble_member + '_final.nc'
-    ps_file = './' + 'ps_' + ensemble_member + '_final.nc'
-    rlds_file = './' + 'rlds_' + ensemble_member + '_final.nc'
-    rsds_file = './' + 'rsds_' + ensemble_member + '_final.nc'
-    wind_speed_file = './' + 'sfcWind_' + ensemble_member + '_final.nc'
-    ta_file = './' + 'tas_' + ensemble_member + '_final.nc'
+    new_file        =    '../../../cuizinart/data/wfdei-gem-capa/' + year + '/' + year + '.nc'
+    hus_file        =    '../../../cuizinart/data/wfdei-gem-capa/original/huss_WFDEI_GEM_1979_2016-final.nc'
+    pr_file         =      '../../../cuizinart/data/wfdei-gem-capa/original/pr_WFDEI_GEM_1979_2016-final.nc'
+    ps_file         =      '../../../cuizinart/data/wfdei-gem-capa/original/ps_WFDEI_GEM_1979_2016-final.nc'
+    rlds_file       =    '../../../cuizinart/data/wfdei-gem-capa/original/rlds_WFDEI_GEM_1979_2016-final.nc'
+    rsds_file       =    '../../../cuizinart/data/wfdei-gem-capa/original/rsds_WFDEI_GEM_1979_2016-final.nc'
+    rsds_thres_file =    '../../../cuizinart/data/wfdei-gem-capa/original/rsds_WFDEI_GEM_1979_2016-final_thresholded.nc'
+    wind_speed_file = '../../../cuizinart/data/wfdei-gem-capa/original/sfcWind_WFDEI_GEM_1979_2016-final.nc'
+    ta_file         =     '../../../cuizinart/data/wfdei-gem-capa/original/tas_WFDEI_GEM_1979_2016-final.nc'
 
     points = generate_points(int(year))
 
     if (check_hus() and check_pr() and check_ps() and check_rlds() and
-            check_rsds() and check_wind_speed() and check_ta()):
+            check_rsds() and check_rsds_thresholded() and check_wind_speed() and check_ta()):
         print(new_file + ': ok')
     else:
         print(new_file + ': corrupted')
