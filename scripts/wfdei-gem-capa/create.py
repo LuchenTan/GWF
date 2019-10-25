@@ -6,8 +6,8 @@ import sys
 import re
 
 
-def create_file(_ensemble, _year):
-    file_path = './' + _year + '_' + _ensemble + '.nc'
+def create_file(_year):
+    file_path = '../../../cuizinart/data/wfdei-gem-capa/' + _year + '.nc'
 
     # Create an empty file
     nc = Dataset(file_path, 'w', format='NETCDF4_CLASSIC')
@@ -20,16 +20,16 @@ def create_file(_ensemble, _year):
     # Create variables
     # Create rlon
     v_rlon = nc.createVariable('rlon', np.float32, ('rlon',), zlib=True)
-    v_rlon.standard_name = "longitude"
+    v_rlon.standard_name = "grid_longitude"
     v_rlon.long_name =  "longitude"
-    v_rlon.units = "degrees_east"
+    v_rlon.units = "degrees"
     v_rlon.axis = "X"
 
     # Create rlat
     v_rlat = nc.createVariable('rlat', np.float32, ('rlat',), zlib=True)
-    v_rlat.standard_name = "latitude"
+    v_rlat.standard_name = "grid_latitude"
     v_rlat.long_name = "latitude"
-    v_rlat.units = "degrees_north"
+    v_rlat.units = "degrees"
     v_rlat.axis = "Y"
 
     # Create lon
@@ -48,7 +48,7 @@ def create_file(_ensemble, _year):
     v_time = nc.createVariable('time', np.int32, ('time',), zlib=True)
     v_time.standard_name = "time"
     v_time.long_name = "time"
-    v_time.units = "hours since 1951-1-1 00:00:00"
+    v_time.units = "hours since 1979-01-01 00:00:00"
     v_time.calendar = "365_day"
     v_time.axis = "T"
 
@@ -89,6 +89,14 @@ def create_file(_ensemble, _year):
     v_rsds.missing_value = np.float32(1e20)
     v_rsds.coordinates = "lon lat"
 
+    # Create rsds_thresholded
+    v_rsds = nc.createVariable('rsds_thresholded', np.float32, ('time', 'rlat', 'rlon'), fill_value=1e+20, zlib=True)
+    v_rsds.standard_name = "surface_downwelling_shortwave_flux_in_air"
+    v_rsds.long_name = "Surface Downwelling Shortwave Radiation (rsds) variable post-processed setting values to zeros if they were zero in WFDEI"
+    v_rsds.units = "W m-2"
+    v_rsds.missing_value = np.float32(1e20)
+    v_rsds.coordinates = "lon lat"
+
     # Create wind_speed
     v_wind = nc.createVariable('wind_speed', np.float32, ('time', 'rlat', 'rlon'), zlib=True)
     v_wind.long_name = "Zonal (Eastward) Wind (sigma=0.995 = lowest model level = approx 40 m)"
@@ -104,106 +112,24 @@ def create_file(_ensemble, _year):
     v_ta.standard_name = "air_temperature"
 
     # Create global attributes
-    args = re.findall(r"\d+\.?\d*", _ensemble)
-    realization = args[0]
-    initialization = args[1]
-    physics = args[2]
-    eid = args[3]
-    
-    if _ensemble == 'r8i2p1r1':
-        nc.CCCma_runid = "nam44_v002_eia-008"
-        nc.creation_date = "2016-12-13-T17:48:26Z"
-        nc.experiment = "CanSISE downscaling run driven by CCCma-CanESM2 eia-008"
-    if _ensemble == 'r8i2p1r2':
-        nc.CCCma_runid = "nam44_v002_eib-008"
-        nc.creation_date = "2016-12-13-T01:51:35Z"
-        nc.experiment = "CanSISE downscaling run driven by CCCma-CanESM2 eib-008"
-    if _ensemble == 'r8i2p1r3':
-        nc.CCCma_runid = "nam44_v002_eic-008"
-        nc.creation_date = "2016-12-12-T21:03:35Z"
-        nc.experiment = "CanSISE downscaling run driven by CCCma-CanESM2 eic-008"
-    if _ensemble == 'r8i2p1r4':
-        nc.CCCma_runid = "nam44_v002_eid-008"
-        nc.creation_date = "2016-12-13-T17:48:47Z"
-        nc.experiment = "CanSISE downscaling run driven by CCCma-CanESM2 eid-008"
-    if _ensemble == 'r8i2p1r5':
-        nc.CCCma_runid = "nam44_v002_eie-008"
-        nc.creation_date = "2016-12-13-T17:49:10Z"
-        nc.experiment = "CanSISE downscaling run driven by CCCma-CanESM2 eie-008"
-    if _ensemble == 'r9i2p1r1':
-        nc.CCCma_runid = "nam44_v002_eia-009"
-        nc.creation_date = "2016-12-12-T18:28:25Z"
-        nc.experiment = "CanSISE downscaling run driven by CCCma-CanESM2 eia-009"
-    if _ensemble == 'r9i2p1r2':
-        nc.CCCma_runid = "nam44_v002_eib-009"
-        nc.creation_date = "2016-12-14-T17:57:55Z"
-        nc.experiment = "CanSISE downscaling run driven by CCCma-CanESM2 eib-009"
-    if _ensemble == 'r9i2p1r3':
-        nc.CCCma_runid = "nam44_v002_eic-009"
-        nc.creation_date = "2016-12-13-T19:09:00Z"
-        nc.experiment = "CanSISE downscaling run driven by CCCma-CanESM2 eic-009"
-    if _ensemble == 'r9i2p1r4':
-        nc.CCCma_runid = "nam44_v002_eid-009"
-        nc.creation_date = "2016-12-13-T19:08:35Z"
-        nc.experiment = "CanSISE downscaling run driven by CCCma-CanESM2 eid-009"
-    if _ensemble == 'r9i2p1r5':
-        nc.CCCma_runid = "nam44_v002_eie-009"
-        nc.creation_date = "2016-12-13-T00:39:10Z"
-        nc.experiment = "CanSISE downscaling run driven by CCCma-CanESM2 eie-009"
-    if _ensemble == 'r10i2p1r1':
-        nc.CCCma_runid = "nam44_v002_eia-010"
-        nc.creation_date = "2016-12-13-T21:38:22Z"
-        nc.experiment = "CanSISE downscaling run driven by CCCma-CanESM2 eia-010"
-    if _ensemble == 'r10i2p1r2':
-        nc.CCCma_runid = "nam44_v002_eib-010"
-        nc.creation_date = "2016-12-12-T18:32:27Z"
-        nc.experiment = "CanSISE downscaling run driven by CCCma-CanESM2 eib-010"
-    if _ensemble == 'r10i2p1r3':
-        nc.CCCma_runid = "nam44_v002_eic-010"
-        nc.creation_date = "2016-12-13-T00:38:21Z"
-        nc.experiment = "CanSISE downscaling run driven by CCCma-CanESM2 eic-010"
-    if _ensemble == 'r10i2p1r4':
-        nc.CCCma_runid = "nam44_v002_eid-010"
-        nc.creation_date = "2016-12-12-T18:32:51Z"
-        nc.experiment = "CanSISE downscaling run driven by CCCma-CanESM2 eid-010"
-    if _ensemble == 'r10i2p1r5':
-        nc.CCCma_runid = "nam44_v002_eie-010"
-        nc.creation_date = "2016-12-15-T00:01:21Z"
-        nc.experiment = "CanSISE downscaling run driven by CCCma-CanESM2 eie-010"
-
-    nc.experiment_id = "historical-r"+eid
-    nc.driving_experiment = "CCCma-CanESM2, historical-r"+eid+", r"+realization+"i"+initialization+"p"+physics
-    nc.driving_experiment_name = "historical-r"+eid
-    nc.driving_model_ensemble_member = "r"+realization+"i"+initialization+"p"+physics
-    nc.realization = realization
-    nc.initialization_method = initialization
-    nc.physics_version = physics
-    nc.gwf_product = "canrcm4-wfdei-gem-capa"
-    nc.CDI = "Climate Data Interface version 1.7.2 (http://mpimet.mpg.de/cdi)"
-    nc.institution = "CCCma (Canadian Centre for Climate Modelling and Analysis, Victoria, BC, Canada)"
-    nc.Conventions = "CF-1.6"
-    nc.title = "CanRCM4 model output prepared for CanSISE Project"
-    nc.institute_id = "CCCma"
-    nc.driving_model_id = "CCCma-CanESM2"
-    nc.forcing = "GHG,Oz,SA,BC,OC,LU,Vl (GHG includes CO2,CH4,N2O,CFC11,effective CFC12)"
-    nc.project_id = "CanSISE"
-    nc.model_id = "CCCma-CanRCM4"
-    nc.CORDEX_domain = "NAM-44"
-    nc.rcm_version_id = "r2"
-    nc.frequency = "1hr"
-    nc.product = "output"
-    nc.contact = "cccma_info@ec.gc.ca"
-    nc.references = "http://www.cccma.ec.gc.ca/models"
-    nc.data_licence = "1) GRANT OF LICENCE - The Government of Canada (Environment Canada) is the \n""owner of all intellectual property rights (including copyright) that may exist in this Data \n""product. You (as \"The Licensee\") are hereby granted a non-exclusive, non-assignable, \n""non-transferable unrestricted licence to use this data product for any purpose including \n""the right to share these data with others and to make value-added and derivative \n""products from it. This licence is not a sale of any or all of the owner\'s rights.\n""2) NO WARRANTY - This Data product is provided \"as-is\"; it has not been designed or \n""prepared to meet the Licensee\'s particular requirements. Environment Canada makes no \n""warranty, either express or implied, including but not limited to, warranties of \n""merchantability and fitness for a particular purpose. In no event will Environment Canada \n""be liable for any indirect, special, consequential or other damages attributed to the \n""Licensee\'s use of the Data product."
-    nc.CDO = "Climate Data Operators version 1.7.2 (http://mpimet.mpg.de/cdo)"
+    nc.Conventions = "CF-1.6" ;
+    nc.Title = "A Bias-Corrected 3-hourly 0.125 Gridded Meteorological Forcing Data Set (1979 – 2016) for Land Surface Modeling in North America (WFDEI-GEM-CaPA)" ;
+    nc.Methodology = "https://www.frdr.ca/repo/handle/doi:10.20383/101.0111" ;
+    nc.Author1 = "Asong, Zilefac Elvis; University of Saskatchewan; https://orcid.org/0000-0001-7086-6764" ;
+    nc.Author2 = "Wheater, Howard; University of Saskatchewan" ;
+    nc.Author3 = "Pomeroy, John; University of Saskatchewan" ;
+    nc.Author4 = "Pietroniro, Alain; Environment and Climate Change Canada" ;
+    nc.Author5 = "Elshamy, Mohamed; University of Saskatchewan; https://orcid.org/0000-0002-3621-0021" ;
+    nc.gwf_product = "wfdei-gem-capa"
+    nc.frequency = "3hr"
+    nc.Descrption = "Cold regions hydrology is very sensitive to the impacts of climate warming. Future warming is expected to increase the proportion of winter precipitation falling as rainfall. Snowpacks are expected to undergo less sublimation, form later and melt earlier and possibly more slowly, leading to earlier spring peak streamflow. More physically realistic and sophisticated hydrological models driven by reliable climate forcing can provide the capability to assess hydrologic responses to climate change. However, hydrological processes in cold regions involve complex phase changes and so are very sensitive to small biases in the driving meteorology, particularly temperature and precipitation. Cold regions often have sparse surface observations, particularly at high elevations that generate the major amount of runoff. The effects of mountain topography and high latitudes are not well reflected in the observational record. The best available gridded data in these regions is from the high resolution forecasts of the Global Environmental Multiscale (GEM) atmospheric model and the Canadian Precipitation Analysis (CaPA) reanalysis but this dataset has a short historical record. The EU WATCH ERA-Interim reanalysis (WFDEI) has a longer historical record, but has often been found to be biased relative to observations over Canada. The aim of this study, therefore, is to blend the strengths of both datasets (GEM-CaPA and WFDEI) to produce a less-biased long record product (WFDEI-GEM-CaPA). First, a multivariate generalization of the quantile mapping technique was implemented to bias-correct WFDEI against GEM-CaPA at 3h x 0.125 deg resolution during the 2005-2016 period, followed by a hindcast of WFDEI-GEM-CaPA from 1979."
     nc.close()
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 3:
-        raise Exception('arg1: ensemble\narg2: year')
+    if len(sys.argv) < 2:
+        raise Exception('arg1: year')
 
-    ensemble = sys.argv[1]
-    year = sys.argv[2]
+    year = sys.argv[1]
 
-    create_file(ensemble, year)
+    create_file(year)

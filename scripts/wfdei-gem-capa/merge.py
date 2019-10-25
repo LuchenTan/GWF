@@ -6,15 +6,16 @@ import sys
 import logging
 
 
-def merge_file(ensemble, yyyy, log):
-    file_path = './' + yyyy + '_' + ensemble + '.nc'
-    hus_path = './huss_' + ensemble + '_final.nc'
-    pr_path = './pr_' + ensemble + '_final.nc'
-    ps_path = './ps_' + ensemble + '_final.nc'
-    rlds_path = './rlds_' + ensemble + '_final.nc'
-    rsds_path = './rsds_' + ensemble + '_final.nc'
-    wind_speed_path = './sfcWind_' + ensemble + '_final.nc'
-    ta_path = './tas_' + ensemble + '_final.nc'
+def merge_file(yyyy, log):
+    file_path       =    '../../../cuizinart/data/wfdei-gem-capa/' + yyyy + '.nc'
+    hus_path        =    '../../../cuizinart/data/wfdei-gem-capa/original/huss_WFDEI_GEM_1979_2016-final.nc'
+    pr_path         =      '../../../cuizinart/data/wfdei-gem-capa/original/pr_WFDEI_GEM_1979_2016-final.nc'
+    ps_path         =      '../../../cuizinart/data/wfdei-gem-capa/original/ps_WFDEI_GEM_1979_2016-final.nc'
+    rlds_path       =    '../../../cuizinart/data/wfdei-gem-capa/original/rlds_WFDEI_GEM_1979_2016-final.nc'
+    rsds_path       =    '../../../cuizinart/data/wfdei-gem-capa/original/rsds_WFDEI_GEM_1979_2016-final.nc'
+    rsds_thres_path =    '../../../cuizinart/data/wfdei-gem-capa/original/rsds_WFDEI_GEM_1979_2016-final_thresholded.nc'
+    wind_speed_path = '../../../cuizinart/data/wfdei-gem-capa/original/sfcWind_WFDEI_GEM_1979_2016-final.nc'
+    ta_path         =     '../../../cuizinart/data/wfdei-gem-capa/original/tas_WFDEI_GEM_1979_2016-final.nc'
 
     all_file = Dataset(file_path, 'a')
 
@@ -28,8 +29,8 @@ def merge_file(ensemble, yyyy, log):
     part_data = part_file['lat'][:]
     all_file['rlat'][:] = part_data
 
-    start = (int(yyyy) - 1951) * 2920
-    end = start + 2919
+    start = (int(yyyy) - 1979) * (365*8)    # 3-hrly data for 365 days
+    end = start +  (365*8-1)
 
     part_data = part_file['time']
     all_data = all_file['time']
@@ -114,6 +115,19 @@ def merge_file(ensemble, yyyy, log):
 
     part_file.close()
 
+    # Merge rsds (thresholded)
+    log.info('Merging rsds (thresholded)')
+    part_file = Dataset(rsds_thres_path, 'r')
+
+    part_data = part_file['rsds']
+    all_data = all_file['rsds_thresholded']
+    index = 0
+    for i in range(start, end + 1):
+        all_data[index] = part_data[i]
+        index += 1
+
+    part_file.close()
+
     # Merge wind_speed
     log.info('Merging wind_speed')
     part_file = Dataset(wind_speed_path, 'r')
@@ -141,19 +155,18 @@ def merge_file(ensemble, yyyy, log):
     part_file.close()
     all_file.close()
 
-    log.info(yyyy+'_'+ensemble+'.nc Done!')
+    log.info(yyyy+'.nc Done!')
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 3:
-        raise Exception('arg1: ensemble membler\narg2: year')
+    if len(sys.argv) < 2:
+        raise Exception('arg1: year')
 
-    ensemble_member = sys.argv[1]
-    year = sys.argv[2]
+    year = sys.argv[1]
 
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(
-        filename=ensemble_member + '.log',
+        filename='logging' + '.log',
         filemode='a',
         level=logging.INFO,
         format=FORMAT,
@@ -161,4 +174,4 @@ if __name__ == '__main__':
     )
     logging.info('Starting to merge data of ' + year)
 
-    merge_file(ensemble_member, year, logging)
+    merge_file(year, logging)
